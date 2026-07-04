@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Royal Chess Engine & Adventure</title>
+    <style>
+        :root {
+            --royal-blue: #0A2540;
+            --accent-blue: #007BFF;
+            --light-blue: #E6F0FA;
+            --white: #FFFFFF;
+            --dark-gray: #1E293B;
+            --gold: #FFD700;
+            --silver: #C0C0C0;
+            --bronze: #CD7F32;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--royal-blue); color: var(--white); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Main Application Header */
+        header { background-color: var(--dark-gray); padding: 15px; text-align: center; border-bottom: 2px solid var(--accent-blue); font-size: 1.4rem; font-weight: bold; letter-spacing: 1px; }
+        
+        /* Viewport Content Panel Container */
+        .content-container { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 85px; }
+        .app-tab { display: none; width: 100%; max-width: 600px; margin: 0 auto; }
+        .app-tab.active { display: block; }
+
+        /* WhatsApp-Style Persistent Bottom Navigation Bar */
+        nav.bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background-color: var(--dark-gray); display: flex; justify-content: space-around; border-top: 2px solid var(--accent-blue); z-index: 1000; }
+        .nav-item { flex: 1; padding: 15px 0; text-align: center; cursor: pointer; color: #94A3B8; font-size: 0.9rem; font-weight: 600; transition: background 0.3s, color 0.3s; }
+        .nav-item.active { color: var(--white); background-color: var(--royal-blue); border-top: 3px solid var(--white); }
+
+        /* Game System Subcomponents */
+        .board-wrapper { width: 100%; max-width: 400px; margin: 15px auto; border: 4px solid var(--white); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .control-panel { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-top: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+        .game-status { font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; color: var(--light-blue); }
+        
+        /* Buttons and Selection Option Controls */
+        .royal-btn { background-color: var(--accent-blue); color: var(--white); border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.95rem; margin: 5px; transition: transform 0.1s; }
+        .royal-btn:active { transform: scale(0.95); }
+        .selector-group { display: flex; justify-content: center; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+        .selector-btn { background: var(--dark-gray); border: 1px solid var(--accent-blue); color: var(--white); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+        .selector-btn.active { background: var(--accent-blue); font-weight: bold; }
+
+        /* Adventure Levels Component Styling */
+        .adventure-header { text-align: center; margin-bottom: 20px; padding: 10px; background: rgba(0,123,255,0.2); border-radius: 8px; }
+        .levels-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 15px; }
+        .level-node { background: var(--dark-gray); border: 2px solid var(--accent-blue); border-radius: 12px; aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; position: relative; transition: all 0.2s; }
+        .level-node.locked { opacity: 0.4; cursor: not-allowed; border-color: #475569; }
+        .level-node.locked::after { content: "🔒"; font-size: 0.8rem; margin-top: 4px; }
+        .level-node.boss { border-color: var(--gold); box-shadow: 0 0 8px var(--gold); }
+        .level-node.completed { background: #059669; border-color: #34D399; }
+
+        /* Dynamic System Leaderboard Formatting */
+        .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: var(--dark-gray); border-radius: 8px; overflow: hidden; }
+        .leaderboard-table th, .leaderboard-table td { padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .leaderboard-table th { background-color: rgba(0,123,255,0.3); font-weight: bold; }
+        .rank-row:nth-child(1) .rank-badge { color: var(--gold); font-size: 1.3rem; }
+        .rank-row:nth-child(2) .rank-badge { color: var(--silver); font-size: 1.2rem; }
+        .rank-row:nth-child(3) .rank-badge { color: var(--bronze); font-size: 1.1rem; }
+
+        /* Thematic Customization Options Block */
+        .theme-card { background: var(--dark-gray); border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid var(--accent-blue); }
+        
+        /* Modal Window Alerts */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
+        .modal-box { background: var(--dark-gray); border: 2px solid var(--accent-blue); padding: 25px; border-radius: 12px; text-align: center; max-width: 400px; width: 100%; }
+        
+        /* Chess Board Styling */
+        .chess-board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0; width: 100%; aspect-ratio: 1; }
+        .chess-square { display: flex; justify-content: center; align-items: center; font-size: 2rem; cursor: pointer; user-select: none; }
+        .chess-square.light { background-color: #E6F0FA; }
+        .chess-square.dark { background-color: #007BFF; }
+        .chess-square.highlight { background-color: #FFD700; box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.5); }
+        
+        /* Visual adjustments for unlocking custom board aesthetics overrides */
+        .theme-classic-blue .white-1e1d7 { background-color: #E6F0FA !important; color: #0A2540 !important; }
+        .theme-classic-blue .black-3c85d { background-color: #007BFF !important; color: #FFFFFF !important; }
+        .theme-royal-gold .white-1e1d7 { background-color: #FFFDF0 !important; color: #4A3B00 !important; }
+        .theme-royal-gold .black-3c85d { background-color: #D4AF37 !important; color: #FFF !important; }
+    </style>
+</head>
+<body>
+
+    <header>ROYAL CHESS KINGDOM</header>
+
+    <div class="content-container">
+        <!-- TAB 1: CUSTOM MATCHES (WHATSAPP TAB STYLE) -->
+        <div id="tab-custom" class="app-tab active">
+            <div class="control-panel">
+                <h3>Select Match Mode</h3>
+                <div class="selector-group">
+                    <button class="selector-btn active" onclick="setMode('vs-pass')">Pass & Play</button>
+                    <button class="selector-btn" onclick="setMode('vs-ai')">Vs Computer AI</button>
+                    <button class="selector-btn" onclick="setMode('vs-bt')">Bluetooth Link</button>
+                    <button class="selector-btn" onclick="setMode('vs-online')">Find Match Online</button>
+                </div>
+                <div id="ai-settings" class="selector-group" style="display:none;">
+                    <button class="selector-btn active" id="lvl-1" onclick="setAiLevel(1)">Beginner</button>
+                    <button class="selector-btn" id="lvl-2" onclick="setAiLevel(2)">Intermediate</button>
+                    <button class="selector-btn" id="lvl-3" onclick="setAiLevel(3)">Master AI</button>
+                </div>
+            </div>
+            <div class="board-wrapper">
+                <div id="custom-board" class="chess-board"></div>
+            </div>
+            <div class="control-panel">
+                <div class="game-status" id="custom-status">White's Turn</div>
+                <button class="royal-btn" onclick="resetCustomGame()">Reset Match</button>
+            </div>
+        </div>
+
+        <!-- TAB 2: ADVENTURE JOURNEY -->
+        <div id="tab-adventure" class="app-tab">
+            <div class="adventure-header">
+                <h3 id="adventure-progress-text">Adventure Path: Level 1 / 100</h3>
+                <p style="font-size:0.85rem; margin-top:5px; color:#CBD5E1;">Solve puzzles to secure rating points. Boss updates occur every 5 levels.</p>
+            </div>
+            <div class="board-wrapper" id="adv-board-area" style="display:none;">
+                <div id="adventure-board" class="chess-board"></div>
+                <div class="control-panel" style="margin-top:0; border-radius:0 0 6px 6px;">
+                    <div class="game-status" id="adv-status">White to move and solve puzzle</div>
+                    <button class="royal-btn" onclick="exitAdventurePuzzle()">Forfeit Stage</button>
+                </div>
+            </div>
+            <div class="levels-grid" id="levels-container">
+                <!-- Executed dynamically by core program engine -->
+            </div>
+        </div>
+
+        <!-- TAB 3: LEADERBOARD & PERK STATS -->
+        <div id="tab-leaderboard" class="app-tab">
+            <div class="control-panel">
+                <h3>Your Active Rank & Profile</h3>
+                <p style="font-size:1.2rem; margin:10px 0; color:var(--gold);" id="user-points-display">Points: 0</p>
+                <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:5px; font-size:0.85rem;" id="user-stats-breakdown">
+                    <div>Played: <b id="st-p">0</b></div>
+                    <div>Won: <b id="st-w">0</b></div>
+                    <div>Draws: <b id="st-d">0</b></div>
+                    <div>Loss: <b id="st-l">0</b></div>
+                </div>
+            </div>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Points</th>
+                        <th>Record</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TAB 4: SETTINGS & CUSTOMIZATION -->
+        <div id="tab-settings" class="app-tab">
+            <div class="adventure-header">
+                <h3>Game Settings & Preferences</h3>
+            </div>
+            
+            <div class="theme-card">
+                <h4 style="margin-bottom:10px;">Board Theme</h4>
+                <div class="selector-group">
+                    <button class="selector-btn active" onclick="setTheme('classic')">Classic Blue</button>
+                    <button class="selector-btn" onclick="setTheme('gold')">Royal Gold</button>
+                    <button class="selector-btn" onclick="setTheme('dark')">Dark Mode</button>
+                </div>
+            </div>
+
+            <div class="theme-card">
+                <h4 style="margin-bottom:10px;">Sound Settings</h4>
+                <div class="selector-group">
+                    <button class="selector-btn active" onclick="toggleSound(true)">On</button>
+                    <button class="selector-btn" onclick="toggleSound(false)">Off</button>
+                </div>
+            </div>
+
+            <div class="theme-card">
+                <h4 style="margin-bottom:10px;">Reset Progress</h4>
+                <button class="royal-btn" onclick="confirmReset()">Clear All Data</button>
+                <p style="font-size:0.8rem; margin-top:10px; color:#CBD5E1;">Warning: This cannot be undone.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('tab-custom')">🎮 Play</div>
+        <div class="nav-item" onclick="switchTab('tab-adventure')">🗺️ Adventure</div>
+        <div class="nav-item" onclick="switchTab('tab-leaderboard')">🏆 Ranks</div>
+        <div class="nav-item" onclick="switchTab('tab-settings')">⚙️ Settings</div>
+    </nav>
+
+    <!-- Modal Alerts -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <h3 id="modal-title">Alert</h3>
+            <p id="modal-message"></p>
+            <button class="royal-btn" onclick="closeModal()">Confirm</button>
+        </div>
+    </div>
+
+    <script>
+        // Game State Management
+        const gameState = {
+            mode: 'vs-pass',
+            aiLevel: 1,
+            board: initializeBoard(),
+            currentPlayer: 'white',
+            points: 0,
+            stats: { played: 0, won: 0, draws: 0, losses: 0 },
+            adventureLevel: 1,
+            theme: 'classic',
+            soundEnabled: true,
+            selectedSquare: null,
+        };
+
+        // Initialize Chess Board
+        function initializeBoard() {
+            const board = Array(8).fill(null).map(() => Array(8).fill(null));
+            
+            // Set up pieces
+            const pieces = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
+            board[0] = pieces.map(p => 'b' + p);
+            board[1] = Array(8).fill('bp');
+            board[6] = Array(8).fill('wp');
+            board[7] = pieces.map(p => 'w' + p);
+            
+            return board;
+        }
+
+        // Tab Navigation
+        function switchTab(tabName) {
+            document.querySelectorAll('.app-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Mode Selection
+        function setMode(mode) {
+            gameState.mode = mode;
+            document.querySelectorAll('.selector-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const aiSettings = document.getElementById('ai-settings');
+            aiSettings.style.display = mode === 'vs-ai' ? 'flex' : 'none';
+            
+            initializeCustomBoard();
+        }
+
+        // AI Level Selection
+        function setAiLevel(level) {
+            gameState.aiLevel = level;
+            document.querySelectorAll('#ai-settings .selector-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // Initialize Custom Game Board
+        function initializeCustomBoard() {
+            const board = document.getElementById('custom-board');
+            board.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `chess-square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    
+                    const piece = gameState.board[row][col];
+                    if (piece) square.textContent = getPieceEmoji(piece);
+                    
+                    square.onclick = () => selectSquare(row, col);
+                    board.appendChild(square);
+                }
+            }
+        }
+
+        // Get Piece Emoji
+        function getPieceEmoji(piece) {
+            const emojis = {
+                'wk': '♔', 'wq': '♕', 'wr': '♖', 'wb': '♗', 'wn': '♘', 'wp': '♙',
+                'bk': '♚', 'bq': '♛', 'br': '♜', 'bb': '♝', 'bn': '♞', 'bp': '♟'
+            };
+            return emojis[piece] || '';
+        }
+
+        // Square Selection
+        function selectSquare(row, col) {
+            if (!gameState.selectedSquare) {
+                gameState.selectedSquare = { row, col };
+                highlightSquare(row, col);
+            } else {
+                moveSquare(gameState.selectedSquare.row, gameState.selectedSquare.col, row, col);
+                gameState.selectedSquare = null;
+            }
+        }
+
+        // Highlight Square
+        function highlightSquare(row, col) {
+            document.querySelectorAll('.chess-square').forEach(sq => sq.classList.remove('highlight'));
+            document.querySelector(`[data-row="${row}"][data-col="${col}"]`).classList.add('highlight');
+        }
+
+        // Move Piece
+        function moveSquare(fromRow, fromCol, toRow, toCol) {
+            const piece = gameState.board[fromRow][fromCol];
+            if (piece && piece[0] === gameState.currentPlayer[0]) {
+                gameState.board[toRow][toCol] = piece;
+                gameState.board[fromRow][fromCol] = null;
+                gameState.currentPlayer = gameState.currentPlayer === 'white' ? 'black' : 'white';
+                document.getElementById('custom-status').textContent = gameState.currentPlayer.charAt(0).toUpperCase() + gameState.currentPlayer.slice(1) + "'s Turn";
+                initializeCustomBoard();
+            }
+        }
+
+        // Reset Custom Game
+        function resetCustomGame() {
+            gameState.board = initializeBoard();
+            gameState.currentPlayer = 'white';
+            gameState.selectedSquare = null;
+            initializeCustomBoard();
+        }
+
+        // Theme Selection
+        function setTheme(theme) {
+            gameState.theme = theme;
+            document.querySelectorAll('.theme-card').forEach(card => card.classList.remove('active'));
+            event.target.classList.add('active');
+            document.body.className = `theme-${theme}`;
+        }
+
+        // Toggle Sound
+        function toggleSound(enabled) {
+            gameState.soundEnabled = enabled;
+            event.target.classList.add('active');
+        }
+
+        // Adventure Mode - Load Levels
+        function loadAdventureLevels() {
+            const container = document.getElementById('levels-container');
+            container.innerHTML = '';
+            
+            for (let i = 1; i <= 100; i++) {
+                const node = document.createElement('div');
+                node.className = 'level-node';
+                if (i > gameState.adventureLevel) node.classList.add('locked');
+                if (i % 5 === 0) node.classList.add('boss');
+                if (i < gameState.adventureLevel) node.classList.add('completed');
+                
+                node.textContent = i;
+                node.onclick = () => {
+                    if (i <= gameState.adventureLevel) startAdventurePuzzle(i);
+                };
+                
+                container.appendChild(node);
+            }
+        }
+
+        // Start Adventure Puzzle
+        function startAdventurePuzzle(level) {
+            gameState.adventureLevel = level;
+            document.getElementById('adv-board-area').style.display = 'block';
+            document.getElementById('adv-status').textContent = `Level ${level}: White to move and solve puzzle`;
+            loadAdventureLevels();
+            initializeCustomBoard();
+        }
+
+        // Exit Adventure Puzzle
+        function exitAdventurePuzzle() {
+            document.getElementById('adv-board-area').style.display = 'none';
+        }
+
+        // Leaderboard
+        function loadLeaderboard() {
+            const tbody = document.getElementById('leaderboard-body');
+            const sampleLeaderboard = [
+                { rank: 1, name: 'ChessMaster', points: 5420, record: '42-8' },
+                { rank: 2, name: 'You', points: gameState.points, record: `${gameState.stats.won}-${gameState.stats.losses}` },
+                { rank: 3, name: 'RoyalKnight', points: 4890, record: '38-12' },
+                { rank: 4, name: 'Bishop42', points: 4500, record: '35-15' },
+                { rank: 5, name: 'PawnSlayer', points: 4120, record: '32-18' },
+            ];
+            
+            tbody.innerHTML = sampleLeaderboard.map(player => `
+                <tr class="rank-row">
+                    <td><span class="rank-badge">${['🥇', '🥈', '🥉'][player.rank - 1] || player.rank}</span></td>
+                    <td>${player.name}</td>
+                    <td>${player.points}</td>
+                    <td>${player.record}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Modal Functions
+        function showModal(title, message) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        // Confirm Reset
+        function confirmReset() {
+            showModal('Reset Progress', 'Are you sure you want to clear all data? This cannot be undone.');
+        }
+
+        // Initialize on Load
+        window.onload = () => {
+            initializeCustomBoard();
+            loadAdventureLevels();
+            loadLeaderboard();
+            document.getElementById('user-points-display').textContent = `Points: ${gameState.points}`;
+        };
+    </script>
+</body>
+</html>
