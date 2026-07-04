@@ -1,0 +1,15 @@
+/* Global styles for the web app */
+:root{
+  --royal-blue:#0A2540;
+  --accent-blue:#007BFF;
+  --light-blue:#E6F0FA;
+  --white:#FFFFFF;
+  --dark-gray:#1E293B;
+}
+
+html,body,#__next{height:100%;}
+body{margin:0;background:var(--royal-blue);color:var(--white);font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial}
+
+a{color:var(--accent-blue)}
+
+.container{box-sizing:border-box}
